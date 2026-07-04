@@ -50,7 +50,7 @@ python -m src.train
 # 4a. Predict from the command line
 python -m src.predict \
     --area 2000 --bedrooms 3 --bathrooms 2 --stories 2 \
-    --parking 1 --age 5 --location urban \
+    --parking 1 --age 5 --country USA --location urban \
     --mainroad yes --furnishingstatus semi-furnished
 
 # 4b. …or launch the web app
@@ -75,10 +75,16 @@ has:
 | `stories` | numeric | number of floors |
 | `parking` | numeric | parking spots |
 | `age` | numeric | age of the property in years |
+| `country` | categorical | `Bangladesh` / `India` / `Pakistan` / `UAE` / `UK` / `USA` / `Canada` / `Australia` |
 | `location` | categorical | `prime` / `urban` / `suburban` / `rural` |
 | `mainroad` | categorical | `yes` / `no` |
 | `furnishingstatus` | categorical | `furnished` / `semi-furnished` / `unfurnished` |
-| `price` | **target** | sale price |
+| `price` | **target** | sale price **in USD** (comparable across countries) |
+
+> **Multi-country support:** prices are modelled in USD and scaled by a
+> per-country market factor, so the same house is valued differently in, say,
+> Bangladesh vs. the USA. Add or tune countries in `COUNTRY_PRICE_FACTOR`
+> (`src/config.py`).
 
 ---
 

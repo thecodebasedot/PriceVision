@@ -36,6 +36,8 @@ except FileNotFoundError as exc:
 with st.form("prediction_form"):
     st.subheader("Property details")
 
+    country = st.selectbox("Country", config.COUNTRY_LEVELS, index=0)
+
     col1, col2 = st.columns(2)
     with col1:
         area = st.number_input("Area (sq ft)", 300, 8000, 1800, step=50)
@@ -56,6 +58,7 @@ with st.form("prediction_form"):
 
 if submitted and model_ready:
     features = {
+        "country": country,
         "area": area,
         "bedrooms": bedrooms,
         "bathrooms": bathrooms,
@@ -67,7 +70,7 @@ if submitted and model_ready:
         "furnishingstatus": furnishingstatus,
     }
     price = predict_price(features)
-    st.success(f"### Estimated price: {price:,.0f}")
+    st.success(f"### Estimated price: ${price:,.0f} USD")
 
 # Show model quality if metrics are available.
 if config.METRICS_PATH.exists():

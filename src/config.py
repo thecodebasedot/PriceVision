@@ -32,6 +32,7 @@ NUMERIC_FEATURES = [
 ]
 
 CATEGORICAL_FEATURES = [
+    "country",        # country the property is in
     "location",       # neighbourhood tier
     "mainroad",       # attached to a main road (yes/no)
     "furnishingstatus",  # furnished / semi-furnished / unfurnished
@@ -43,6 +44,21 @@ FEATURES = NUMERIC_FEATURES + CATEGORICAL_FEATURES
 LOCATION_LEVELS = ["prime", "urban", "suburban", "rural"]
 YESNO_LEVELS = ["yes", "no"]
 FURNISHING_LEVELS = ["furnished", "semi-furnished", "unfurnished"]
+
+# Supported countries and their relative price levels (rough market factor,
+# normalised so that "Bangladesh" ~ 1.0). Prices are reported in USD so the
+# model is comparable across countries.
+COUNTRY_PRICE_FACTOR = {
+    "Bangladesh": 1.0,
+    "India": 1.1,
+    "Pakistan": 0.9,
+    "UAE": 3.2,
+    "UK": 5.5,
+    "USA": 6.0,
+    "Canada": 4.8,
+    "Australia": 5.2,
+}
+COUNTRY_LEVELS = list(COUNTRY_PRICE_FACTOR.keys())
 
 # ---------------------------------------------------------------------------
 # Model hyper-parameters (Gradient Boosting)

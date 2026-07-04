@@ -53,6 +53,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     p.add_argument("--stories", type=int, required=True)
     p.add_argument("--parking", type=int, required=True)
     p.add_argument("--age", type=int, required=True)
+    p.add_argument("--country", choices=config.COUNTRY_LEVELS, required=True)
     p.add_argument("--location", choices=config.LOCATION_LEVELS, required=True)
     p.add_argument("--mainroad", choices=config.YESNO_LEVELS, required=True)
     p.add_argument(

@@ -31,6 +31,7 @@ def generate(n_rows: int = 5000, seed: int = config.RANDOM_STATE) -> pd.DataFram
     parking = rng.integers(0, 4, n_rows)
     age = rng.integers(0, 60, n_rows)
 
+    country = rng.choice(config.COUNTRY_LEVELS, n_rows)
     location = rng.choice(
         config.LOCATION_LEVELS, n_rows, p=[0.15, 0.40, 0.30, 0.15]
     )
@@ -49,27 +50,35 @@ def generate(n_rows: int = 5000, seed: int = config.RANDOM_STATE) -> pd.DataFram
         [furnishingstatus == "furnished",
          furnishingstatus == "semi-furnished",
          furnishingstatus == "unfurnished"],
-        [7.5e5, 3.5e5, 0.0],
+        [9000.0, 4000.0, 0.0],
     )
 
-    base = 1.2e6
+    # per-country market factor (prices reported in USD)
+    country_factor = np.array(
+        [config.COUNTRY_PRICE_FACTOR[c] for c in country]
+    )
+
+    base = 15000.0
     price = (
         base
-        + area * 2600 * location_mult          # area matters more in good areas
-        + bedrooms * 4.5e5
-        + bathrooms * 3.0e5
-        + stories * 2.5e5
-        + parking * 2.0e5
+        + area * 30 * location_mult            # area matters more in good areas
+        + bedrooms * 6000
+        + bathrooms * 4000
+        + stories * 3000
+        + parking * 2500
         + furnish_bonus
-        + np.where(mainroad == "yes", 5.0e5, 0.0)
+        + np.where(mainroad == "yes", 6000.0, 0.0)
     )
     # depreciation with age (non-linear) and a mild premium for brand-new
     price *= 1.0 - (age / 120.0)
-    price += np.where(age <= 2, 4.0e5, 0.0)
+    price += np.where(age <= 2, 5000.0, 0.0)
+
+    # scale by country market level
+    price *= country_factor
 
     # multiplicative noise so the target is not perfectly learnable
     price *= rng.normal(1.0, 0.08, n_rows).clip(0.7, 1.35)
-    price = price.clip(6e5, None).round(-3)  # floor + round to nearest 1000
+    price = price.clip(8000, None).round(-2)  # floor + round to nearest 100
 
     df = pd.DataFrame(
         {
@@ -79,6 +88,7 @@ def generate(n_rows: int = 5000, seed: int = config.RANDOM_STATE) -> pd.DataFram
             "stories": stories.astype(int),
             "parking": parking.astype(int),
             "age": age.astype(int),
+            "country": country,
             "location": location,
             "mainroad": mainroad,
             "furnishingstatus": furnishingstatus,
