@@ -216,3 +216,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# PriceVision — regenerable model binary (run `python -m src.train` to rebuild)
+models/*.joblib
