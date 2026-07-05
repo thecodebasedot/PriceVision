@@ -1,6 +1,6 @@
 """PriceVision — house price prediction web app.
 
-A small Streamlit UI on top of the trained Gradient Boosting model.
+A small Streamlit UI on top of the trained Histogram Gradient Boosting model.
 
 Run:
     streamlit run app.py
@@ -11,13 +11,16 @@ import json
 
 import streamlit as st
 
-from src import config
+from src import config, geography
 from src.predict import load_model, predict_price
 
 st.set_page_config(page_title="PriceVision", page_icon="🏠", layout="centered")
 
 st.title("🏠 PriceVision")
-st.caption("House price prediction powered by Gradient Boosting")
+st.caption(
+    f"House price prediction powered by Histogram Gradient Boosting · "
+    f"{geography.n_countries()} countries · {geography.n_cities()} cities"
+)
 
 
 @st.cache_resource
@@ -33,11 +36,17 @@ except FileNotFoundError as exc:
     model_ready = False
     st.error(str(exc))
 
-with st.form("prediction_form"):
-    st.subheader("Property details")
+st.subheader("Property details")
 
+# Location pickers live outside the form so the city list refreshes as soon as
+# the country changes (widgets inside a form only rerun on submit).
+geo_col1, geo_col2 = st.columns(2)
+with geo_col1:
     country = st.selectbox("Country", config.COUNTRY_LEVELS, index=0)
+with geo_col2:
+    city = st.selectbox("City", geography.cities_for(country))
 
+with st.form("prediction_form"):
     col1, col2 = st.columns(2)
     with col1:
         area = st.number_input("Area (sq ft)", 300, 8000, 1800, step=50)
@@ -59,6 +68,7 @@ with st.form("prediction_form"):
 if submitted and model_ready:
     features = {
         "country": country,
+        "city": city,
         "area": area,
         "bedrooms": bedrooms,
         "bathrooms": bathrooms,
@@ -76,11 +86,13 @@ if submitted and model_ready:
 if config.METRICS_PATH.exists():
     metrics = json.loads(config.METRICS_PATH.read_text())
     with st.expander("Model performance"):
-        c1, c2, c3 = st.columns(3)
+        c1, c2, c3, c4 = st.columns(4)
         c1.metric("R²", f"{metrics['r2']:.3f}")
-        c2.metric("RMSE", f"{metrics['rmse']:,.0f}")
-        c3.metric("MAE", f"{metrics['mae']:,.0f}")
+        c2.metric("MAPE", f"{metrics.get('mape', 0) * 100:.1f}%")
+        c3.metric("RMSE", f"{metrics['rmse']:,.0f}")
+        c4.metric("MAE", f"{metrics['mae']:,.0f}")
         st.caption(
+            f"{metrics.get('model', 'Gradient Boosting')} · "
             f"5-fold CV R² = {metrics['cv_r2_mean']:.3f} "
             f"± {metrics['cv_r2_std']:.3f} · "
             f"trained on {metrics['n_train']:,} rows."

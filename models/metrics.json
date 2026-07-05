@@ -1,9 +1,13 @@
 {
-  "rmse": 43585.66,
-  "mae": 31372.16,
-  "r2": 0.966,
-  "cv_r2_mean": 0.9611,
-  "cv_r2_std": 0.0019,
-  "n_train": 4800,
-  "n_test": 1200
+  "rmse": 48448.72,
+  "mae": 30181.15,
+  "mape": 0.079,
+  "r2": 0.9741,
+  "cv_r2_mean": 0.9734,
+  "cv_r2_std": 0.0013,
+  "n_train": 20000,
+  "n_test": 5000,
+  "n_countries": 48,
+  "n_cities": 325,
+  "model": "HistGradientBoostingRegressor (log-target)"
 }

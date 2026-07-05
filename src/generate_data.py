@@ -16,10 +16,10 @@ import argparse
 import numpy as np
 import pandas as pd
 
-from . import config
+from . import config, geography
 
 
-def generate(n_rows: int = 5000, seed: int = config.RANDOM_STATE) -> pd.DataFrame:
+def generate(n_rows: int = 20000, seed: int = config.RANDOM_STATE) -> pd.DataFrame:
     """Create a synthetic housing DataFrame with a realistic price column."""
     rng = np.random.default_rng(seed)
 
@@ -31,7 +31,16 @@ def generate(n_rows: int = 5000, seed: int = config.RANDOM_STATE) -> pd.DataFram
     parking = rng.integers(0, 4, n_rows)
     age = rng.integers(0, 60, n_rows)
 
-    country = rng.choice(config.COUNTRY_LEVELS, n_rows)
+    # --- geography: sample a real (country, city) pair per row ------------
+    catalogue = geography.all_cities()        # list of (country, city, tier)
+    idx = rng.integers(0, len(catalogue), n_rows)
+    country = np.array([catalogue[i][0] for i in idx])
+    city = np.array([catalogue[i][1] for i in idx])
+    city_tier = np.array([catalogue[i][2] for i in idx])
+    market_factor = np.array(
+        [geography.factor_of(c, ct) for c, ct in zip(country, city)]
+    )
+
     location = rng.choice(
         config.LOCATION_LEVELS, n_rows, p=[0.15, 0.40, 0.30, 0.15]
     )
@@ -53,11 +62,6 @@ def generate(n_rows: int = 5000, seed: int = config.RANDOM_STATE) -> pd.DataFram
         [9000.0, 4000.0, 0.0],
     )
 
-    # per-country market factor (prices reported in USD)
-    country_factor = np.array(
-        [config.COUNTRY_PRICE_FACTOR[c] for c in country]
-    )
-
     base = 15000.0
     price = (
         base
@@ -73,8 +77,8 @@ def generate(n_rows: int = 5000, seed: int = config.RANDOM_STATE) -> pd.DataFram
     price *= 1.0 - (age / 120.0)
     price += np.where(age <= 2, 5000.0, 0.0)
 
-    # scale by country market level
-    price *= country_factor
+    # scale by the combined country + city market factor (USD)
+    price *= market_factor
 
     # multiplicative noise so the target is not perfectly learnable
     price *= rng.normal(1.0, 0.08, n_rows).clip(0.7, 1.35)
@@ -88,7 +92,9 @@ def generate(n_rows: int = 5000, seed: int = config.RANDOM_STATE) -> pd.DataFram
             "stories": stories.astype(int),
             "parking": parking.astype(int),
             "age": age.astype(int),
+            "city_tier": city_tier.astype(int),
             "country": country,
+            "city": city,
             "location": location,
             "mainroad": mainroad,
             "furnishingstatus": furnishingstatus,
@@ -100,7 +106,7 @@ def generate(n_rows: int = 5000, seed: int = config.RANDOM_STATE) -> pd.DataFram
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate PriceVision dataset")
-    parser.add_argument("--rows", type=int, default=5000, help="number of rows")
+    parser.add_argument("--rows", type=int, default=20000, help="number of rows")
     parser.add_argument("--seed", type=int, default=config.RANDOM_STATE)
     args = parser.parse_args()
 
