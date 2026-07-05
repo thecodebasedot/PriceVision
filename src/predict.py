@@ -15,7 +15,7 @@ from functools import lru_cache
 
 import pandas as pd
 
-from . import config
+from . import config, geography
 
 
 @lru_cache(maxsize=1)
@@ -34,8 +34,17 @@ def load_model():
 def predict_price(features: dict) -> float:
     """Predict a single house price from a feature dict.
 
-    ``features`` must contain every key in ``config.FEATURES``.
+    ``features`` must contain every key in ``config.FEATURES`` — except
+    ``city_tier``, which is auto-derived from the (country, city) pair when
+    absent. This lets callers price *any* city: known cities get their tier
+    from the geography table, unknown ones fall back to the default tier.
     """
+    features = dict(features)  # don't mutate the caller's dict
+    if "city_tier" not in features:
+        features["city_tier"] = geography.tier_of(
+            features.get("country"), features.get("city")
+        )
+
     missing = [f for f in config.FEATURES if f not in features]
     if missing:
         raise ValueError(f"Missing feature(s): {missing}")
@@ -53,6 +62,12 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     p.add_argument("--stories", type=int, required=True)
     p.add_argument("--parking", type=int, required=True)
     p.add_argument("--age", type=int, required=True)
+    p.add_argument("--country", choices=config.COUNTRY_LEVELS, required=True)
+    p.add_argument(
+        "--city",
+        default="",
+        help="city name (any city; known cities use their price tier)",
+    )
     p.add_argument("--location", choices=config.LOCATION_LEVELS, required=True)
     p.add_argument("--mainroad", choices=config.YESNO_LEVELS, required=True)
     p.add_argument(
@@ -65,7 +80,7 @@ def main() -> None:
     args = _build_arg_parser().parse_args()
     features = vars(args)
     price = predict_price(features)
-    print(f"Estimated price: {price:,.0f}")
+    print(f"Estimated price: ${price:,.0f} USD")
 
 
 if __name__ == "__main__":

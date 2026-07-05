@@ -16,10 +16,10 @@ import argparse
 import numpy as np
 import pandas as pd
 
-from . import config
+from . import config, geography
 
 
-def generate(n_rows: int = 5000, seed: int = config.RANDOM_STATE) -> pd.DataFrame:
+def generate(n_rows: int = 20000, seed: int = config.RANDOM_STATE) -> pd.DataFrame:
     """Create a synthetic housing DataFrame with a realistic price column."""
     rng = np.random.default_rng(seed)
 
@@ -30,6 +30,16 @@ def generate(n_rows: int = 5000, seed: int = config.RANDOM_STATE) -> pd.DataFram
     stories = rng.integers(1, 5, n_rows)
     parking = rng.integers(0, 4, n_rows)
     age = rng.integers(0, 60, n_rows)
+
+    # --- geography: sample a real (country, city) pair per row ------------
+    catalogue = geography.all_cities()        # list of (country, city, tier)
+    idx = rng.integers(0, len(catalogue), n_rows)
+    country = np.array([catalogue[i][0] for i in idx])
+    city = np.array([catalogue[i][1] for i in idx])
+    city_tier = np.array([catalogue[i][2] for i in idx])
+    market_factor = np.array(
+        [geography.factor_of(c, ct) for c, ct in zip(country, city)]
+    )
 
     location = rng.choice(
         config.LOCATION_LEVELS, n_rows, p=[0.15, 0.40, 0.30, 0.15]
@@ -49,27 +59,30 @@ def generate(n_rows: int = 5000, seed: int = config.RANDOM_STATE) -> pd.DataFram
         [furnishingstatus == "furnished",
          furnishingstatus == "semi-furnished",
          furnishingstatus == "unfurnished"],
-        [7.5e5, 3.5e5, 0.0],
+        [9000.0, 4000.0, 0.0],
     )
 
-    base = 1.2e6
+    base = 15000.0
     price = (
         base
-        + area * 2600 * location_mult          # area matters more in good areas
-        + bedrooms * 4.5e5
-        + bathrooms * 3.0e5
-        + stories * 2.5e5
-        + parking * 2.0e5
+        + area * 30 * location_mult            # area matters more in good areas
+        + bedrooms * 6000
+        + bathrooms * 4000
+        + stories * 3000
+        + parking * 2500
         + furnish_bonus
-        + np.where(mainroad == "yes", 5.0e5, 0.0)
+        + np.where(mainroad == "yes", 6000.0, 0.0)
     )
     # depreciation with age (non-linear) and a mild premium for brand-new
     price *= 1.0 - (age / 120.0)
-    price += np.where(age <= 2, 4.0e5, 0.0)
+    price += np.where(age <= 2, 5000.0, 0.0)
+
+    # scale by the combined country + city market factor (USD)
+    price *= market_factor
 
     # multiplicative noise so the target is not perfectly learnable
     price *= rng.normal(1.0, 0.08, n_rows).clip(0.7, 1.35)
-    price = price.clip(6e5, None).round(-3)  # floor + round to nearest 1000
+    price = price.clip(8000, None).round(-2)  # floor + round to nearest 100
 
     df = pd.DataFrame(
         {
@@ -79,6 +92,9 @@ def generate(n_rows: int = 5000, seed: int = config.RANDOM_STATE) -> pd.DataFram
             "stories": stories.astype(int),
             "parking": parking.astype(int),
             "age": age.astype(int),
+            "city_tier": city_tier.astype(int),
+            "country": country,
+            "city": city,
             "location": location,
             "mainroad": mainroad,
             "furnishingstatus": furnishingstatus,
@@ -90,7 +106,7 @@ def generate(n_rows: int = 5000, seed: int = config.RANDOM_STATE) -> pd.DataFram
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate PriceVision dataset")
-    parser.add_argument("--rows", type=int, default=5000, help="number of rows")
+    parser.add_argument("--rows", type=int, default=20000, help="number of rows")
     parser.add_argument("--seed", type=int, default=config.RANDOM_STATE)
     args = parser.parse_args()
 

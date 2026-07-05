@@ -6,6 +6,8 @@ sync.
 """
 from pathlib import Path
 
+from . import geography
+
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
@@ -29,9 +31,12 @@ NUMERIC_FEATURES = [
     "stories",      # number of floors
     "parking",      # number of parking spots
     "age",          # age of the property in years
+    "city_tier",    # 1 (megacity) … 5 (small town); derived from the city
 ]
 
 CATEGORICAL_FEATURES = [
+    "country",        # country the property is in
+    "city",           # city within the country (high cardinality)
     "location",       # neighbourhood tier
     "mainroad",       # attached to a main road (yes/no)
     "furnishingstatus",  # furnished / semi-furnished / unfurnished
@@ -44,17 +49,31 @@ LOCATION_LEVELS = ["prime", "urban", "suburban", "rural"]
 YESNO_LEVELS = ["yes", "no"]
 FURNISHING_LEVELS = ["furnished", "semi-furnished", "unfurnished"]
 
+# Countries & cities live in geography.py. Prices are reported in USD so the
+# model is comparable across every country.
+COUNTRY_LEVELS = geography.COUNTRY_LEVELS
+
 # ---------------------------------------------------------------------------
-# Model hyper-parameters (Gradient Boosting)
+# Model hyper-parameters (Histogram-based Gradient Boosting)
 # ---------------------------------------------------------------------------
 RANDOM_STATE = 42
 TEST_SIZE = 0.2
 
-GB_PARAMS = {
-    "n_estimators": 500,
+# HistGradientBoostingRegressor: faster and stronger than the classic
+# GradientBoostingRegressor, scales to large data and many categories, and
+# supports built-in early stopping. The target is log-transformed at train
+# time (see train.py) because prices span several orders of magnitude across
+# countries.
+HGB_PARAMS = {
+    "loss": "squared_error",
     "learning_rate": 0.05,
-    "max_depth": 3,
-    "subsample": 0.9,
-    "min_samples_leaf": 15,
+    "max_iter": 900,
+    "max_leaf_nodes": 63,
+    "min_samples_leaf": 25,
+    "l2_regularization": 0.15,
+    "max_bins": 255,
+    "early_stopping": True,
+    "validation_fraction": 0.1,
+    "n_iter_no_change": 40,
     "random_state": RANDOM_STATE,
 }
